@@ -1,14 +1,19 @@
 #ifndef CHAT_H
 #define CHAT_H
 
-#include <QObject>
-#include <QtQml>
-#include <QDataStream>
-
 #include "chatllm.h"
 #include "chatmodel.h"
-#include "database.h"
-#include "localdocsmodel.h"
+#include "database.h" // IWYU pragma: keep
+#include "localdocsmodel.h" // IWYU pragma: keep
+#include "modellist.h"
+
+#include <QList>
+#include <QObject>
+#include <QQmlEngine>
+#include <QString>
+#include <QtGlobal>
+
+class QDataStream;
 
 class Chat : public QObject
 {
@@ -28,8 +33,9 @@ class Chat : public QObject
     Q_PROPERTY(QList<QString> collectionList READ collectionList NOTIFY collectionListChanged)
     Q_PROPERTY(QString modelLoadingError READ modelLoadingError NOTIFY modelLoadingErrorChanged)
     Q_PROPERTY(QString tokenSpeed READ tokenSpeed NOTIFY tokenSpeedChanged);
-    Q_PROPERTY(QString device READ device NOTIFY deviceChanged);
-    Q_PROPERTY(QString fallbackReason READ fallbackReason NOTIFY fallbackReasonChanged);
+    Q_PROPERTY(QString deviceBackend READ deviceBackend NOTIFY loadedModelInfoChanged)
+    Q_PROPERTY(QString device READ device NOTIFY loadedModelInfoChanged)
+    Q_PROPERTY(QString fallbackReason READ fallbackReason NOTIFY loadedModelInfoChanged)
     Q_PROPERTY(LocalDocsCollectionsModel *collectionModel READ collectionModel NOTIFY collectionModelChanged)
     // 0=no, 1=waiting, 2=working
     Q_PROPERTY(int trySwitchContextInProgress READ trySwitchContextInProgress NOTIFY trySwitchContextInProgressChanged)
@@ -90,7 +96,7 @@ public:
     void unloadAndDeleteLater();
     void markForDeletion();
 
-    qint64 creationDate() const { return m_creationDate; }
+    QDateTime creationDate() const { return QDateTime::fromSecsSinceEpoch(m_creationDate); }
     bool serialize(QDataStream &stream, int version) const;
     bool deserialize(QDataStream &stream, int version);
     bool isServer() const { return m_isServer; }
@@ -106,8 +112,10 @@ public:
     QString modelLoadingError() const { return m_modelLoadingError; }
 
     QString tokenSpeed() const { return m_tokenSpeed; }
-    QString device() const { return m_device; }
-    QString fallbackReason() const { return m_fallbackReason; }
+    QString deviceBackend() const;
+    QString device() const;
+    // not loaded -> QString(), no fallback -> QString("")
+    QString fallbackReason() const;
 
     int trySwitchContextInProgress() const { return m_trySwitchContextInProgress; }
 
@@ -144,6 +152,7 @@ Q_SIGNALS:
     void fallbackReasonChanged();
     void collectionModelChanged();
     void trySwitchContextInProgressChanged();
+    void loadedModelInfoChanged();
 
 private Q_SLOTS:
     void handleResponseChanged(const QString &response);
@@ -154,8 +163,6 @@ private Q_SLOTS:
     void handleRecalculating();
     void handleModelLoadingError(const QString &error);
     void handleTokenSpeedChanged(const QString &tokenSpeed);
-    void handleDeviceChanged(const QString &device);
-    void handleFallbackReasonChanged(const QString &device);
     void handleDatabaseResultsChanged(const QList<ResultInfo> &results);
     void handleModelInfoChanged(const ModelInfo &modelInfo);
     void handleTrySwitchContextOfLoadedModelCompleted(int value);
